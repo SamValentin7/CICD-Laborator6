@@ -240,6 +240,55 @@ Add your user to docker group:
 sudo usermod -aG docker $USER
 ```
 
+## Docker Hub Authentication Setup
+
+To push Docker images to Docker Hub from GitHub Actions, you need to configure the following secrets in your repository:
+
+### Required Secrets
+
+1. **DOCKERHUB_USERNAME** - Your Docker Hub username
+2. **DOCKERHUB_TOKEN** - Your Docker Hub access token (not your password)
+
+### Setting Up Docker Hub Access Token
+
+1. Log in to [Docker Hub](https://hub.docker.com)
+2. Click on your profile picture → **Account Settings**
+3. Go to **Security** → **New Access Token**
+4. Create a token with **Read & Write** permissions
+5. Copy the token (it will only be shown once)
+
+### Adding Secrets to GitHub Repository
+
+1. Go to your GitHub repository
+2. Click **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret**
+4. Add the following secrets:
+
+| Secret Name | Value |
+|--------------|-------|
+| `DOCKERHUB_USERNAME` | Your Docker Hub username |
+| `DOCKERHUB_TOKEN` | Your Docker Hub access token |
+
+### Optional Server Deployment Secrets
+
+If you want to enable automatic deployment to a server via SSH, add these additional secrets:
+
+| Secret Name | Description |
+|--------------|-------------|
+| `SERVER_HOST` | Your server's IP address or domain |
+| `SERVER_USER` | SSH username (e.g., ubuntu, root) |
+| `SSH_PRIVATE_KEY` | Private SSH key for authentication |
+
+### Creating SSH Key for Deployment
+
+```bash
+# Generate SSH key pair (if you don't have one)
+ssh-keygen -t rsa -b 4096 -C "deploy-key" -f deploy_key -N ""
+
+# The private key (deploy_key) goes to GitHub secrets as SSH_PRIVATE_KEY
+# The public key (deploy_key.pub) goes to server's ~/.ssh/authorized_keys
+```
+
 ## Security Notes
 
 - Change default MySQL password in production
@@ -247,6 +296,8 @@ sudo usermod -aG docker $USER
 - Configure firewall rules
 - Enable SSL/TLS for database connections
 - Use non-root users in containers
+- Never commit `.env` files with real credentials
+- Rotate Docker Hub access tokens regularly
 
 ## License
 
