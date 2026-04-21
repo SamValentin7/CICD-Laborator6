@@ -26,10 +26,11 @@ docker rm -f laborator6-mysql laborator6-web
 
 ### Ștergere imagini
 ```bash
-docker rmi laborator6
-docker rmi samvalentin/laborator6:latest
-# Forțare
-docker rmi -f laborator6
+docker rmi cicd-laborator6-web:latest
+docker rmi mysql:8.0  
+
+docker rmi samvalentin/cicd-laborator6-web:latest
+
 ```
 
 ### Ștergere volume (PIERDERE DATE!)

@@ -198,18 +198,19 @@ docker rm laborator6-web
 
 ### 6. Încărcați imaginea Docker creată în contul personal Docker Hub
 
-**Pas 1:** Autentificare Docker Hub
+**Pas 1:** Autentificare Docker Hub si Image Build
 
 ```bash
 docker login
 
+docker build -t cicd-laborator6-web:latest .
 ```
 
 **Pas 2:** Tagging imagine pentru Docker Hub
 
 ```bash
 # Format: dockerhub-username/image-name:tag
-docker tag laborator6:latest samvalentin/laborator6:latest
+docker tag cicd-laborator6-web:latest samvalentin/cicd-laborator6-web:latest
 
 ```
 
@@ -222,7 +223,7 @@ docker images
 
 ```bash
 # Push tag latest
-docker push samvalentin/laborator6:latest
+docker push samvalentin/cicd-laborator6-web:latest
 
 ```
 
@@ -468,7 +469,7 @@ docker login -u yourusername -p your-token
 
 ```bash
 # Pull imaginea latest
-docker pull yourusername/laborator6:latest
+docker pull samvalentin/cicd-laborator6-web:latest
 
 # Verificare
 docker images
@@ -502,21 +503,6 @@ docker-compose up -d
 
 ## Comenzi Rapide - Rezumat
 
-### Docker locale
-```bash
-# Build
-docker build -t laborator6 .
-
-# Run
-docker run -p 3000:3000 laborator6
-
-# Push
-docker tag laborator6 youruser/laborator6:latest
-docker push youruser/laborator6:latest
-
-# Pull
-docker pull youruser/laborator6:latest
-```
 
 ### Docker Compose
 ```bash
