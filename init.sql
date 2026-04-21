@@ -1,8 +1,8 @@
 -- Create database
-CREATE DATABASE IF NOT EXISTS myapp_base;
+CREATE DATABASE IF NOT EXISTS laborator6;
 
 -- Use database
-USE myapp_base;
+USE laborator6;
 
 -- Create items table
 CREATE TABLE IF NOT EXISTS items (

@@ -1,5 +1,5 @@
 # Use official Node.js runtime as base image
-FROM node:18-alpine
+FROM node:18-alpine AS builder
 
 # Set working directory in container
 WORKDIR /app
@@ -7,11 +7,26 @@ WORKDIR /app
 # Copy package.json and package-lock.json (if exists)
 COPY package*.json ./
 
-# Install dependencies
-RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi
+# Install all dependencies (including dev for building)
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copy application source code
 COPY . .
+
+# Production stage
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi
+
+# Copy application from builder stage
+COPY --from=builder /app .
 
 # Create public directory if it doesn't exist
 RUN mkdir -p public

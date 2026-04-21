@@ -1,5 +1,5 @@
 {
-  "name": "myapp-base",
+  "name": "laborator6",
   "version": "1.0.0",
   "description": "Web application with MySQL database integration",
   "main": "server.js",

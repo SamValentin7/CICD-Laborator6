@@ -1,4 +1,4 @@
-# MyApp Base - CI/CD with Docker & GitHub Actions
+# Laborator6 - CI/CD with Docker & GitHub Actions
 
 A complete web application with MySQL database integration, containerized with Docker, and automated CI/CD pipeline using GitHub Actions.
 
@@ -14,10 +14,10 @@ A complete web application with MySQL database integration, containerized with D
 ## Project Structure
 
 ```
-myapp-base/
+laborator6/
 ├── .github/
 │   └── workflows/
-│       └── ci-cd.yml          # GitHub Actions CI/CD pipeline
+│       └── deploy.yml          # GitHub Actions CI/CD pipeline
 ├── public/
 │   └── index.html             # Frontend web interface
 ├── init.sql                   # Database initialization script
@@ -41,7 +41,7 @@ myapp-base/
 
 ```bash
 git clone <your-repo-url>
-cd myapp-base
+cd laborator6
 ```
 
 ### 2. Configure environment variables
@@ -116,7 +116,7 @@ npm install
 ### Set up local MySQL
 
 1. Install MySQL on your system
-2. Create database: `myapp_base`
+2. Create database: `laborator6`
 3. Update `.env` file with your MySQL credentials
 
 ### Run the application
@@ -136,13 +136,13 @@ The application will be available at http://localhost:3000
 ### Build the image manually
 
 ```bash
-docker build -t myapp-base .
+docker build -t laborator6 .
 ```
 
 ### Run the container manually
 
 ```bash
-docker run -p 3000:3000 --env-file .env myapp-base
+docker run -p 3000:3000 --env-file .env laborator6
 ```
 
 ### View running containers
@@ -154,8 +154,8 @@ docker ps
 ### View logs
 
 ```bash
-docker logs myapp-web
-docker logs myapp-mysql
+docker logs laborator6-web
+docker logs laborator6-mysql
 ```
 
 ## GitHub Actions CI/CD Pipeline
@@ -194,7 +194,7 @@ Edit the `deploy` job in `.github/workflows/ci-cd.yml`:
   run: |
     echo "Deploying to production..."
     # Example for SSH deployment:
-    # ssh user@your-server "docker pull ghcr.io/username/myapp-base:latest && cd /path/to/app && docker-compose up -d"
+    # ssh user@your-server "docker pull ghcr.io/username/laborator6:latest && cd /path/to/app && docker-compose up -d"
 ```
 
 ## Environment Variables
@@ -205,7 +205,7 @@ Edit the `deploy` job in `.github/workflows/ci-cd.yml`:
 | `DB_PORT` | 3306 | MySQL port |
 | `DB_USER` | root | MySQL username |
 | `DB_PASSWORD` | password | MySQL password |
-| `DB_NAME` | myapp_base | Database name |
+| `DB_NAME` | laborator6 | Database name |
 | `NODE_ENV` | development | Node environment |
 | `PORT` | 3000 | Application port |
 

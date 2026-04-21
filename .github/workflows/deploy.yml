@@ -16,7 +16,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/myapp-base
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/laborator6
 
 jobs:
   build-and-push:
