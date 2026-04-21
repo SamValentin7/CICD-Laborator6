@@ -9,7 +9,7 @@ Realizarea unui proces complet de dezvoltare, containerizare, publicare și depl
 
 ## Sarcini de realizat
 
-### 1. Creați o aplicație web legată cu o bază de date MySQL
+### 1. Aplicația web cu MySQL
 
 **Fișiere create:**
 - `server.js` - Aplicația Express.js cu REST API
@@ -25,7 +25,7 @@ Realizarea unui proces complet de dezvoltare, containerizare, publicare și depl
 
 ---
 
-### 2. Creați un fișier Dockerfile pentru containerizarea aplicației
+### 2. Dockerfile pentru aplicația web
 
 **Fișier:** `Dockerfile`
 
@@ -52,482 +52,251 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 CMD ["node", "server.js"]
 ```
 
-**Explicație:**
-- `FROM node:18-alpine` - Imagine de bază ușoară Node.js
-- `WORKDIR /app` - Setează directorul de lucru
-- `COPY package*.json ./` - Copiază fișierele de dependențe
-- `RUN npm ci` - Instalează dependențele
-- Multi-stage build pentru optimizare
-- `HEALTHCHECK` - Verificare automată a stării
-- `EXPOSE 3000` - Expune portul 3000
+---
+
+### 3. Dockerfile pentru baza de date MySQL
+
+**Fișier:** `Dockerfile.db`
+
+```dockerfile
+FROM mysql:8.0
+ENV MYSQL_ROOT_PASSWORD=password
+ENV MYSQL_DATABASE=laborator6
+COPY init.sql /docker-entrypoint-initdb.d/
+EXPOSE 3306
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD mysqladmin ping -h localhost -u root -p"$MYSQL_ROOT_PASSWORD" || exit 1
+```
 
 ---
 
-### 3. Creați un fișier docker-compose.yml pentru gestionarea serviciilor
+### 4. docker-compose.yml
 
 **Fișier:** `docker-compose.yml`
 
+```yaml
+version: '3.8'
+
+services:
+  mysql:
+    build:
+      context: .
+      dockerfile: Dockerfile.db
+    container_name: laborator6-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_DATABASE: ${DB_NAME:-laborator6}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - myapp-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laborator6-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_NAME: ${DB_NAME:-laborator6}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - myapp-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {if(r.statusCode!==200) throw new Error(r.statusCode)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  mysql_data:
+
+networks:
+  myapp-network:
+    driver: bridge
+```
+
 ---
 
-### 4. Construiți și rulați containerul local folosind Docker Compose
+## Rularea proiectului
 
-**Pas 1:** Verificăți instalarea Docker și Docker Compose
+### Opțiunea 1: Docker Compose (Recomandat)
 
+1. **Clonare repository:**
 ```bash
-# Verifică Docker
-docker --version
-docker-compose --version
+git clone https://github.com/SamValentin7/CICD-Laborator6.git
+cd CICD-Laborator6
 ```
 
-**Pas 2:** Creare fișier `.env` din template
-
+2. **Configurare mediu:**
 ```bash
 cp .env.example .env
-# Editați .env dacă este necesar (opțional)
 ```
 
-**Pas 3:** Pornire servicii în mod detached (background)
-
+3. **Construire și pornire servicii:**
 ```bash
-docker-compose up -d
-```
-or
-```bash
-docker-compose up --build
+docker-compose up --build -d
 ```
 
-**Pas 4:** Verificare status containere
-
+4. **Verificare:**
 ```bash
 docker-compose ps
 ```
 
-**Pas 5:** Vizualizare loguri
+5. **Accesare aplicație:**
+- **URL:** http://localhost:3000
+- **API:** http://localhost:3000/api/items
 
+6. **Oprire servicii:**
 ```bash
-# Loguri ambele servicii
-docker-compose logs -f
-
-# Loguri doar pentru aplicație
-docker-compose logs -f web
-
-# Loguri doar pentru MySQL
-docker-compose logs -f mysql
-```
-
-**Pas 6:** Testare aplicație
-
-```bash
-# Verificare health endpoint
-curl http://localhost:3000/health
-
-# Expected: {"status":"OK","timestamp":"..."}
-```
-
-**Pas 7:** Accesare interfață web
-
-Deschideți browserul la: `http://localhost:3000`
-
-**Pas 8:** Oprire servicii
-
-```bash
-# Oprire containere (păstrează volumele cu date)
 docker-compose down
-
-# Oprire containere + ștergere volume (toate datele se pierd)
-docker-compose down -v
 ```
 
 ---
 
-### 5. Construiți imaginea aplicației folosind Docker
+### Opțiunea 2: Imagini Docker Individuale (cu rețea)
 
-**Pas 1:** Construire imagine cu Docker direct (fără Docker Compose)
-
+1. **Build imagini:**
 ```bash
-# Build cu tag specific
-docker build -t laborator6:latest .
-
+docker build -t samvalentin/laborator6-web -f Dockerfile .
+docker build -t samvalentin/laborator6-mysql -f Dockerfile.db .
 ```
 
-**Pas 2:** Listare imagini Docker
-
+2. **Creare rețea:**
 ```bash
-docker images
+docker network create laborator6-network
 ```
 
-**Pas 3:** Rulare container din imagine
-
+3. **Pornire database:**
 ```bash
-# Rulare simplă
-docker run -p 3000:3000 laborator6
+docker run -d \
+  --name laborator6-mysql \
+  --network laborator6-network \
+  -p 3306:3306 \
+  -e MYSQL_ROOT_PASSWORD=password \
+  -e MYSQL_DATABASE=laborator6 \
+  -v mysql_data:/var/lib/mysql \
+  samvalentin/laborator6-mysql:latest
+```
 
-# Rulare cu variabile de mediu
-docker run -p 3000:3000 \
-  -e DB_HOST=host.docker.internal \
+4. **Așteptare 15 secunde** pentru inițializarea bazei de date
+
+5. **Pornire aplicație:**
+```bash
+docker run -d \
+  --name laborator6-web \
+  --network laborator6-network \
+  -p 3000:3000 \
+  -e DB_HOST=laborator6-mysql \
   -e DB_NAME=laborator6 \
   -e DB_USER=root \
   -e DB_PASSWORD=password \
-  laborator6
-
-# Rulare în background
-docker run -d -p 3000:3000 --name myapp laborator6
+  samvalentin/laborator6-web:latest
 ```
 
-**Pas 4:** Verificare container rulare
+6. **Accesare aplicație:** http://localhost:3000
 
+7. **Oprire:**
 ```bash
-# Listare containere active
-docker ps
-
-# Verificare loguri
-docker logs laborator6-web
-
-# Testare endpoint
-curl http://localhost:3000/health
-```
-
-**Pas 5:** Oprire container
-
-```bash
-docker stop laborator6-web
-docker rm laborator6-web
+docker stop laborator6-web laborator6-mysql
+docker rm laborator6-web laborator6-mysql
+docker network rm laborator6-network
+docker volume rm mysql_data
 ```
 
 ---
 
-### 6. Încărcați imaginea Docker creată în contul personal Docker Hub
+## Imagini Docker Hub
 
-**Pas 1:** Autentificare Docker Hub si Image Build
+Proiectul include două imagini publice pe Docker Hub:
 
-```bash
-docker login
+- **Web App:** [samvalentin/laborator6-web](https://hub.docker.com/repository/docker/samvalentin/laborator6-web)
+- **MySQL DB:** [samvalentin/laborator6-mysql](https://hub.docker.com/repository/docker/samvalentin/laborator6-mysql)
 
-docker build -t cicd-laborator6-web:latest .
-```
-
-**Pas 2:** Tagging imagine pentru Docker Hub
+### Utilizare imagini din Docker Hub:
 
 ```bash
-# Format: dockerhub-username/image-name:tag
-docker tag cicd-laborator6-web:latest samvalentin/cicd-laborator6-web:latest
-
-```
-
-**Verificare tag-uri:**
-```bash
-docker images
-```
-
-**Pas 3:** Push către Docker Hub
-
-```bash
-# Push tag latest
-docker push samvalentin/cicd-laborator6-web:latest
-
-```
-
-**Pas 4:** Verificare pe Docker Hub
-
-1. Accesați https://hub.docker.com
-2. Logați-vă
-3. Vizualizați repository-ul: `samvalentin/laborator6`
-4. Ar trebui să vedeți imaginea `latest` (și eventual alte tag-uri)
-
----
-
-### 7. Inițializați un repozitoriu Git și urcați proiectul pe GitHub (Laborator6)
-
-**Pas 1:** Inițializare repository Git
-
-```bash
-# Inițializare Git
-git init
-
-# Adăugare fișiere
-git add .
-
-# Commit inițial
-git commit -m "Initial commit - Laborator6 CI/CD application"
-```
-
-**Pas 2:** Creare repository pe GitHub
-
-1. Accesați https://github.com
-2. Click "New repository"
-3. Nume repository: `Laborator6`
-4. Descriere: `CI/CD project with Docker and GitHub Actions`
-5. Selectați **Public** sau **Private**
-6. **NU** selectați "Initialize this repository with a README"
-7. Click "Create repository"
-
-**Pas 3:** Conectare remote GitHub
-
-```bash
-# Adăugare remote (înlocuiți cu username-ul vostru)
-git remote add origin https://github.com/YOUR_USERNAME/Laborator6.git
-
-# Verificare remote
-git remote -v
-```
-
-**Pas 4:** Push primul commit
-
-```bash
-# Push pe branch-ul main
-git branch -M main
-git push -u origin main
-```
-
-**Pas 5:** Verificare GitHub
-
-1. Refresh pagina GitHub
-2. Ar trebui să vedeți toate fișierele proiectului
-
----
-
-### 8. Creați un fișier workflow GitHub Actions în `.github/workflows/deploy.yml` pentru automatizarea deploy-ului
-
-**Fișier deja creat:** `.github/workflows/deploy.yml`
-
-**Structura directoarelor:**
-```
-.github/
-└── workflows/
-    └── deploy.yml    # Workflow GitHub Actions
-```
-
----
-
-### 9. Adăugați secretele de autentificare în Docker Hub
-
-**Pas 1:** Creare Docker Hub Access Token
-
-1. Logați-vă pe https://hub.docker.com
-2. Click pe avatar → **Account Settings**
-3. Secțiunea **Security**
-4. Click **New Access Token**
-5. Completați:
-   - **Description**: `laborator6`
-   - **Access**: **Read & Write**
-6. Click **Create**
-7. **IMPORTANT**: Copiați token-ul imediat (se afișează o singură dată!)
-
-**Pas 2:** Adăugare secrete în GitHub
-
-1. Accesați repository-ul GitHub: `https://github.com/YOUR_USERNAME/Laborator6`
-2. Click **Settings** (roata dinților)
-3. Stânga: **Secrets and variables** → **Actions**
-4. Click **New repository secret**
-
-**Secret 1 - Docker Hub Username:**
-```
-Name: DOCKERHUB_USERNAME
-Value: your-dockerhub-username
-```
-
-**Secret 2 - Docker Hub Token:**
-```
-Name: DOCKERHUB_TOKEN
-Value: token-ul-copiat-de-la-Docker-Hub
-```
-
-**Pas 3:** Verificare secrete
-
-În pagina GitHub Secrets, ar trebui să vedeți:
-- ✅ DOCKERHUB_USERNAME
-- ✅ DOCKERHUB_TOKEN
-
----
-
-### 10. Declanșați execuția workflow-ului GitHub Actions printr-un push în branch-ul main
-
-**Pas 1:** Adăugare fișierele workflow la Git
-
-```bash
-# Verificare status
-git status
-
-# Adăugare fișiere noi
-git add .github/workflows/deploy.yml
-git add DOCKER_HUB_SETUP.md
-
-# Commit
-git commit -m "Add GitHub Actions deploy workflow and Docker Hub setup guide"
-```
-
-**Pas 2:** Push către GitHub
-
-```bash
-git push origin main
-```
-
-**Pas 3:** Monitorizare execuție workflow
-
-1. Accesați repository-ul GitHub
-2. Click tab **Actions**
-3. Ar trebui să vedeți workflow-ul "Deploy to Production" în execuție
-4. Click pe workflow pentru detalii
-
-**Stări posibile:**
-- 🟡 **In progress** - În curs de execuție
-- ✅ **Success** - Finalizat cu succes
-- ❌ **Failed** - Eroare (verificați logurile)
-
-**Pas 4:** Verificare etape
-
-În pagina workflow, verificați:
-- ✅ **build-and-push** job:
-  - Checkout code
-  - Set up Docker Buildx
-  - Log in to Docker Hub (ar trebui să fie ✅)
-  - Extract metadata
-  - Build and push Docker image (✅)
-
-- ✅ **deploy** job (dacă a fost configurat):
-  - Checkout deployment scripts
-  - Deploy to server via SSH (sau mesaj de placeholder)
-
-**Pas 5:** View job logs
-
-Click pe fiecare job → **Jobs** → Click pe numele step-ului pentru a vedea logurile detaliate.
-
----
-
-### 11. Verificați dacă imaginea a fost încărcată corect pe Docker Hub
-
-**Pas 1:** Accesare Docker Hub
-
-1. Logați-vă pe https://hub.docker.com
-2. Click pe profil → **Dashboard**
-3. Căutați repository-ul: `samvalentin/laborator6`
-
-**Pas 2:** Verificare imagini/tag-uri
-
-În pagina repository-ului ar trebui să vedeți:
-- **Tags** tab
-- Tag-uri disponibile:
-  - `latest` (dacă ați făcut push pe main)
-
-**Pas 3:** Verificare detaliile imaginii
-
-Click pe tag-ul `latest`:
-- **Layers** - Straturi imagine
-- **Size** - Dimensiune (ar trebui ~180MB)
-- **Created** - Data creării
-- **Digest** - SHA256 hash
-
-**Pas 4:** Testare pull din Docker Hub
-
-```bash
-# Pull imagine de pe Docker Hub
-docker pull samvalentin/laborator6:latest
-
-```
-
-**Pas 5:** Rulare test container
-
-```bash
-# Rulare container din imaginea din Docker Hub
-docker run -d -p 3000:3000 --name test-laborator6 samvalentin/laborator6:latest
-
-# Verificare
-docker ps | grep laborator6
-
-# Testare health
-curl http://localhost:3000/health
-
-# Oprire
-docker stop test-laborator6
-docker rm test-laborator6
-```
-
----
-
-### 12. Realizați rularea imaginii din Docker Hub pe un server extern utilizând comenzi Docker
-
-**Pas 2:** Verificare Docker
-
-```bash
-# Verificare instalare Docker
-docker --version
-docker-compose --version  # dacă folosiți docker-compose
-
-```
-
-**Pas 3:** Autentificare Docker Hub 
-
-```bash
-# Login pe server (va cere username/parola sau token)
-docker login
-
-# Sau folosiți token (recomandat)
-docker login -u yourusername -p your-token
-```
-
-**Pas 4:** Pull imagine de pe Docker Hub
-
-```bash
-# Pull imaginea latest
-docker pull samvalentin/cicd-laborator6-web:latest
-
-# Verificare
-docker images
-```
-
-**Pas 5:** Rulare container pe server
-
-**Opțiune A - Docker run simplu:**
-```bash
+# Database
 docker run -d \
-  --name laborator6-app \
+  --name laborator6-mysql \
+  --network laborator6-network \
+  -p 3306:3306 \
+  -e MYSQL_ROOT_PASSWORD=password \
+  -e MYSQL_DATABASE=laborator6 \
+  -v mysql_data:/var/lib/mysql \
+  samvalentin/laborator6-mysql:latest
+
+# Flask app (wait 15 seconds)
+sleep 15
+
+docker run -d \
+  --name laborator6-web \
+  --network laborator6-network \
   -p 3000:3000 \
-  --restart unless-stopped \
-  -e DB_HOST=localhost \
+  -e DB_HOST=laborator6-mysql \
   -e DB_NAME=laborator6 \
   -e DB_USER=root \
-  -e DB_PASSWORD=your-secure-password \
-  samvalentin/laborator6:latest
-```
-
-**Opțiune B - Docker Compose (dacă aveți docker-compose.yml):**
-
-Pe server, creați `docker-compose.yml`:
-
-Apoi:
-```bash
-docker-compose up -d
+  -e DB_PASSWORD=password \
+  samvalentin/laborator6-web:latest
 ```
 
 ---
 
-## Comenzi Rapide - Rezumat
+## Comenzi Docker Utile
 
-
-### Docker Compose
+### Construire Imagini
 ```bash
-# Pornire
-docker-compose up -d
-
-# Oprire
-docker-compose down
-
-# Loguri
-docker-compose logs -f
-
-# Rebuild
-docker-compose build --no-cache
-docker-compose up -d
+docker build -t samvalentin/laborator6-web -f Dockerfile .
+docker build -t samvalentin/laborator6-mysql -f Dockerfile.db .
 ```
 
-### Git & GitHub
+### Rulare Containere cu Rețea
 ```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/USERNAME/Laborator6.git
-git push -u origin main
+docker network create laborator6-network
+
+docker run -d --name laborator6-mysql --network laborator6-network -p 3306:3306 -v mysql_data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=laborator6 samvalentin/laborator6-mysql:latest
+
+sleep 15
+
+docker run -d --name laborator6-web --network laborator6-network -p 3000:3000 -e DB_HOST=laborator6-mysql -e DB_NAME=laborator6 -e DB_USER=root -e DB_PASSWORD=password samvalentin/laborator6-web:latest
+```
+
+### Oprire
+```bash
+docker stop laborator6-web laborator6-mysql
+docker rm laborator6-web laborator6-mysql
+docker network rm laborator6-network
+docker volume rm mysql_data
 ```
 
 ---
+
+## GitHub Actions
+
+Workflow-ul `.github/workflows/deploy.yml` build-ează automat ambele imagini și le push pe Docker Hub la fiecare push pe branch-ul main.
+
+---
+
+## Note
+
+- **2 imagini separate:** Web app + MySQL database
+- **Rețea:** Containerele comunică prin rețeaua Docker `laborator6-network`
+- **Persistență:** Datele MySQL sunt păstrate în volume `mysql_data`
+- **Porturi:** Web=3000, MySQL=3306

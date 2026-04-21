@@ -1,44 +1,50 @@
 # Comenzi Ștergere Docker - Laborator6
 
-## Oprire containere
+## Oprire containere (păstrează datele)
 ```bash
 docker-compose down
 ```
 
-## Ștergere containere + imagini + volume + rețea (COMPLET)
+## Oprire + ștergere volume (toate datele se pierd)
+```bash
+docker-compose down -v
+```
+
+## Ștergere completă TOATE resursele
+
+### Opțiunea 1: Docker Compose
 ```bash
 docker-compose down --rmi all -v
 ```
 
-## Ștergere manuală (alternativă)
+### Opțiune 2: Ștergere manuală
 
-### Oprire containere
+**Oprire containere:**
 ```bash
 docker stop laborator6-mysql laborator6-web
 ```
 
-### Ștergere containere
+**Ștergere containere:**
 ```bash
 docker rm laborator6-mysql laborator6-web
 # SAU forțare
 docker rm -f laborator6-mysql laborator6-web
 ```
 
-### Ștergere imagini
+**Ștergere imagini:**
 ```bash
-docker rmi cicd-laborator6-web:latest
-docker rmi mysql:8.0  
-
-docker rmi samvalentin/cicd-laborator6-web:latest
-
+docker rmi samvalentin/laborator6-web:latest
+docker rmi samvalentin/laborator6-mysql:latest
 ```
 
-### Ștergere volume (PIERDERE DATE!)
+**Ștergere volume (PIERDERE DATE!):**
 ```bash
+docker volume rm mysql_data
+# SAU
 docker volume rm laborator6_mysql_data
 ```
 
-### Ștergere rețea
+**Ștergere rețea:**
 ```bash
 docker network rm laborator6-network
 ```
